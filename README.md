@@ -32,7 +32,7 @@ For specific library versions, please refer to the `requirements.txt` file. To d
 For training your own model, please refer to the instructions from OpenAI's [guided diffusion](https://github.com/openai/improved-diffusion) for which our model is based on.
 
 ## Running Experiments
-The masks are generated using `mask_generation.ipynb`, where two observation modalities can be created--satellite swaths and insitu observations. This code allows for you to denote a `swath_ratio` parameter that allows you to specify how much of your observations you want to come from satellite vs. insitu. For further details, please refer to the file itself.  
+The masks are generated using `mask_generation.ipynb`, where two observation modalities can be created--satellite swaths and insitu observations. This code allows for you to denote a `swath_ratio` parameter specifying how much of your observations you want to come from satellite vs. insitu. For further details, please refer to the file itself.  
 
 Our experiments are run in two steps: a smoothing step and an inpainting step. 
 
