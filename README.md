@@ -16,7 +16,7 @@ Our approach is divided into three primary components:
 
 Finally, we assess the performance of the model on previously unseen, out-of-sample images and quantify its performance against traditional methods.  
 
-![KrigSCD Framework Schematic.](https://github.com/valtsao17/krigSCD/blob/main/framework.gif)
+<img src="https://github.com/valtsao17/krigSCD/blob/main/framework.gif" width="50%" height="50%"/>
 
 ## Dataset
 The dataset utilized in this study consists of historical U.S. temperature data at 2 meters above the surface, recorded hourly between 17:00 and 23:00 UTC during the summer months (June 1–August 31) from 2018 to 2020. These data were sourced from the National Oceanic and Atmospheric Administration (NOAA) High-Resolution Rapid Refresh (HRRR) model. All data can be downloaded from the [AWS HRRR archive](https://registry.opendata.aws/noaa-hrrr-pds/).  
