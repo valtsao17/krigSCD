@@ -1,9 +1,12 @@
+import os
+import argparse
 import numpy as np
 import scipy
 from scipy.spatial.distance import pdist, cdist
 import scipy.optimize
 import matplotlib.pyplot as plt
 from PIL import Image
+import yaml
 
 def image_to_binary_matrix(image_path, threshold=128):
     """
@@ -11,8 +14,7 @@ def image_to_binary_matrix(image_path, threshold=128):
     """
     image = Image.open(image_path).convert('L')
     img_array = np.array(image)
-    binary_matrix = np.where(img_array < threshold, 1, 0)
-    return binary_matrix
+    return np.where(img_array < threshold, 1, 0)
 
 def exponential_semivariogram(h, c, tau):
     """
@@ -27,23 +29,22 @@ def fit_semivariogram(x_known, y_known, data_known):
     points = np.column_stack((x_known, y_known))
     h = pdist(points)
     gamma_c = pdist(data_known[:, None], lambda u, v: 0.5 * (u - v)**2)
-    
+
     bin_edges = np.linspace(0, 300, 51)
     hd = (bin_edges[:-1] + bin_edges[1:]) / 2
     inds = np.digitize(h, bin_edges) - 1
     sum_gamma = np.bincount(inds, weights=gamma_c, minlength=len(hd))
     count_gamma = np.bincount(inds, minlength=len(hd))
     gamma_s = np.where(count_gamma > 0, sum_gamma / count_gamma, 0)
-    
+
     sill_lower, sill_upper = np.min(gamma_s), np.max(gamma_s)
     range_lower, range_upper = (bin_edges[1] - bin_edges[0]), np.max(h)
-    
+
     popt, _ = scipy.optimize.curve_fit(
         exponential_semivariogram, hd, gamma_s,
         bounds=([sill_lower, range_lower], [sill_upper, range_upper])
     )
-    
-    return popt[0], popt[1]  # returns sill (variance) and range (tau)
+    return popt[0], popt[1]
 
 def ordinary_kriging(data, mask):
     """
@@ -51,111 +52,77 @@ def ordinary_kriging(data, mask):
     """
     known_idx = np.argwhere(mask == 0)
     unknown_idx = np.argwhere(mask == 1)
-    
-    x_known = known_idx[:, 1]
-    y_known = known_idx[:, 0]
-    x_unknown = unknown_idx[:, 1]
-    y_unknown = unknown_idx[:, 0]
-    
+
+    x_known, y_known = known_idx[:,1], known_idx[:,0]
+    x_unknown, y_unknown = unknown_idx[:,1], unknown_idx[:,0]
     data_known = data[mask == 0]
+
     var, tau = fit_semivariogram(x_known, y_known, data_known)
-    
     points_known = np.column_stack((x_known, y_known))
     points_unknown = np.column_stack((x_unknown, y_unknown))
-    
+
     dist_C = cdist(points_unknown, points_known)
     dist_Sigma = cdist(points_known, points_known)
-    
     C = var * np.exp(-dist_C / tau)
     Sigma = var * np.exp(-dist_Sigma / tau)
-    
+
     num_known = Sigma.shape[0]
-    Sigma_prime = np.zeros((num_known + 1, num_known + 1))
+    Sigma_prime = np.zeros((num_known+1, num_known+1))
     Sigma_prime[:num_known, :num_known] = Sigma
     Sigma_prime[num_known, :num_known] = 1
     Sigma_prime[:num_known, num_known] = 1
-    
-    C_prime = np.zeros((num_known + 1, C.shape[0]))
+
+    C_prime = np.zeros((num_known+1, C.shape[0]))
     C_prime[:num_known, :] = C.T
     C_prime[num_known, :] = 1
-    
-    W = np.linalg.solve(Sigma_prime, C_prime)
-    zstar = np.dot(W[:num_known, :].T, data_known)
-    mse = var - np.sum(W[:num_known, :] * C_prime[:num_known, :], axis=0) - W[-1, :]
-    
-    interpolated_data = np.copy(data)
-    variance_data = np.zeros_like(data, dtype=float) 
-    interpolated_data[unknown_idx[:, 0], unknown_idx[:, 1]] = zstar
-    variance_data[unknown_idx[:, 0], unknown_idx[:, 1]] = mse
-    
 
-    return interpolated_data, variance_data
+    W = np.linalg.solve(Sigma_prime, C_prime)
+    zstar = W[:num_known, :].T.dot(data_known)
+    mse = var - np.sum(W[:num_known, :]*C_prime[:num_known, :], axis=0) - W[-1, :]
+
+    interp = data.copy().astype(float)
+    varmap = np.zeros_like(data, dtype=float)
+    interp[unknown_idx[:,0], unknown_idx[:,1]] = zstar
+    varmap[unknown_idx[:,0], unknown_idx[:,1]] = mse
+
+    return interp, varmap
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Ordinary kriging smoothing of ground truth data")
+    parser.add_argument('--gt_filepath', type=str, required=True, help='Path to the ground truth image')
+    parser.add_argument('--mask_filepath', type=str, required=True, help='Path to the binary mask image')
+    parser.add_argument('--output_dir', type=str, default='smoothed', help='Directory for smoothed outputs')
+    return parser.parse_args()
 
 def main():
-    filepath = '/home/vt55/RePaint/data/datasets/hrrr/final_tmp_test_64/20180807_hrrrt20.png'
-    img = Image.open(filepath).convert("L")
-    data = np.array(img).astype(np.int16)
-    original_data = np.copy(data)
+    args = parse_args()
+    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(args.config_dir, exist_ok=True)
 
-    mask = image_to_binary_matrix("/home/vt55/RePaint/data/datasets/gt_keep_masks/hrrr_tmp_final_results_64/1.5perknown_0.9swath.png").astype(np.int16)
-    orig_mask = np.copy(mask)
-    interpolated_data, kriging_variance = ordinary_kriging(data, mask)
-    kriging_std = np.sqrt(kriging_variance)
-    
-    unknown_mask = (mask == 1)
-    threshold = np.percentile(kriging_std[unknown_mask], 5)
-    
-    low_variance_indices = np.argwhere((kriging_std < threshold) & (mask == 1))
-    
-    data[low_variance_indices[:, 0], low_variance_indices[:, 1]] = \
-        interpolated_data[low_variance_indices[:, 0], low_variance_indices[:, 1]]
-    mask[low_variance_indices[:, 0], low_variance_indices[:, 1]] = 0
+    # Load data and mask
+    data = np.array(Image.open(args.gt_filepath).convert('L')).astype(np.int16)
+    mask = image_to_binary_matrix(args.mask_filepath).astype(np.int16)
 
-    fig, axs = plt.subplots(2, 3, figsize=(14, 8))
-    
-    im0 = axs[0, 0].imshow(original_data, cmap='coolwarm', vmin=0, vmax=256)
-    axs[0, 0].set_title("Original Data")
-    axs[0, 0].set_xticks([])
-    axs[0, 0].set_yticks([])
-    fig.colorbar(im0, ax=axs[0, 0], fraction=0.046, pad=0.04)
-    
-    im1 = axs[0, 1].imshow(interpolated_data, cmap='coolwarm', vmin=0, vmax=256)
-    axs[0, 1].set_title("Kriging Interpolated Data")
-    axs[0, 1].set_xticks([])
-    axs[0, 1].set_yticks([])
-    fig.colorbar(im1, ax=axs[0, 1], fraction=0.046, pad=0.04)
+    interp, varmap = ordinary_kriging(data, mask)
+    stdmap = np.sqrt(varmap)
 
-    im2 = axs[0, 2].imshow(orig_mask, cmap='gray_r')
-    axs[0, 2].set_title("Original Mask")
-    axs[0, 2].set_xticks([])
-    axs[0, 2].set_yticks([])
-    fig.colorbar(im2, ax=axs[0, 2], fraction=0.046, pad=0.04)
-    
-    im3 = axs[1, 0].imshow(data, cmap='coolwarm', vmin=0, vmax=256)
-    axs[1, 0].set_title("Smoothed Ground Truth")
-    axs[1, 0].set_xticks([])
-    axs[1, 0].set_yticks([])
-    fig.colorbar(im3, ax=axs[1, 0], fraction=0.046, pad=0.04)
+    unknown = (mask == 1)
+    thresh = np.percentile(stdmap[unknown], 5)
+    low_var = np.argwhere((stdmap < thresh) & unknown)
 
-    im4 = axs[1, 1].imshow(kriging_std, cmap='inferno')
-    axs[1, 1].set_title("Kriging Variance")
-    axs[1, 1].set_xticks([])
-    axs[1, 1].set_yticks([])
-    fig.colorbar(im4, ax=axs[1, 1], fraction=0.046, pad=0.04)
-    
-    im5 = axs[1, 2].imshow(mask, cmap='gray_r')
-    axs[1, 2].set_title("New Mask (5th Percentile)")
-    axs[1, 2].set_xticks([])
-    axs[1, 2].set_yticks([])
-    fig.colorbar(im5, ax=axs[1, 2], fraction=0.046, pad=0.04)
-    
+    smoothed = data.copy().astype(float)
+    smoothed[low_var[:,0], low_var[:,1]] = interp[low_var[:,0], low_var[:,1]]
+    new_mask = mask.copy()
+    new_mask[low_var[:,0], low_var[:,1]] = 0
 
-    plt.tight_layout()
-    plt.savefig("kriging_updated_results.png", dpi=500, transparent=False, facecolor="w")
-    plt.show()
-    
-    plt.imsave("new_ground_truth.png", data, cmap='gray', vmin=0, vmax=256)
-    plt.imsave("new_mask.png", mask, cmap='gray')
+    gt_name = os.path.splitext(os.path.basename(args.gt_filepath))[0]
+    mask_name = os.path.splitext(os.path.basename(args.mask_filepath))[0]
+    gt_out = os.path.join(args.output_dir, f"{gt_name}_smoothed.png")
+    mask_out = os.path.join(args.output_dir, f"{mask_name}_smoothed.png")
+    Image.fromarray(smoothed.astype(np.uint8)).save(gt_out)
+    Image.fromarray(new_mask.astype(np.uint8)*255).save(mask_out)
+    print(f"Saved smoothed GT to {gt_out}")
+    print(f"Saved smoothed mask to {mask_out}")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
