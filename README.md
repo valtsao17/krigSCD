@@ -12,7 +12,7 @@ In practice, data assimilation methods are used to reconcile this missing inform
 Our approach is divided into three primary components:   
 1. a training process utilizing a diffusion model to learn the underlying distribution of input images;
 2. a mask generation process that simulates realistic observation patterns, where individual pixels represent in-situ data and randomized trajectories of varying lengths and directions correspond to satellite swath observations; and
-3. a guiding process that refines the model’s focus with something we refer to as a kriged smoother, directing it to converge around regions of observational coverage.    
+3. a guiding process that refines the model’s focus with something we refer to as a kriging smoother, directing it to converge around regions of observational coverage.    
 
 Finally, we assess the performance of the model on previously unseen, out-of-sample images and quantify its performance against traditional methods.  
 
@@ -32,6 +32,7 @@ For specific library versions, please refer to the `requirements.txt` file. To d
 For training your own model, please refer to the instructions from OpenAI's [guided diffusion](https://github.com/openai/improved-diffusion) for which our model is based on.
 
 ## Running Experiments
+The masks are generated using `mask_generation.ipynb`, where two observation modalities can be created--satellite swaths and insitu observations. This code allows for you to denote a `swath_ratio` parameter that allows you to specify how much of your observations you want to come from satellite vs. insitu. For further details, please refer to the file itself.  
 
 Our experiments are run in two steps: a smoothing step and an inpainting step. 
 
