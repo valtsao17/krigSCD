@@ -29,7 +29,7 @@ To run our experiments, first clone the repository with:
 git clone https://github.com/valtsao17/krigSCD.git
 ```
 
-For specific library versions, please refer to the `requirements.txt` file. To download the pretrained models, see [the Dropbox link](https://duke.box.com/s/uzuolhxknhzhksoarm1iis014ydi1b0j).
+For specific library versions, please refer to the `requirements.txt` file. To download the pretrained models, see [the Dropbox link](https://duke.box.com/s/9p9129qo39gyt62mcgi035o90wkjtqf9).
 
 For training your own model, please refer to the instructions from OpenAI's [guided diffusion](https://github.com/openai/improved-diffusion) for which our model is based on.
 
