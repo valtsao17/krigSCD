@@ -1,6 +1,6 @@
 # krigSCD
 
-Official implementation of "Probabilistic Spatial Interpolation of Sparse Data using Diffusion Models," submitted for review to AMS Journal: Artificial Intelligence for the Earth Systems (AIES). 
+Official implementation of "Probabilistic Spatial Interpolation of Sparse Data using Diffusion Models," accepted to AMS Journal: Artificial Intelligence for the Earth Systems (AIES). 
 
 ## Introduction  
 The large underlying assumption of climate models today relies on the basis of a "confident" initial condition, a reasonably plausible snapshot of the Earth for which all future predictions depend on. However, given the inherently chaotic nature of our system, this assumption is complicated by sensitive dependence, where small uncertainties in initial conditions can lead to exponentially diverging outcomes over time. This challenge is particularly salient at global spatial scales and over centennial timescales, where data gaps are not just common but expected. The source of uncertainty is two-fold: (1) sparse, noisy observations from satellites and ground stations, and (2) internal variability stemming from the simplifying approximations within the models themselves.  
