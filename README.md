@@ -1,4 +1,6 @@
 # krigSCD
+[![arXiv](https://img.shields.io/badge/arXiv-2506.00033-b31b1b?style=flat-square&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2506.00033)
+[![DOI](https://img.shields.io/badge/DOI-10.1175%2FAIES--D--25--0049.1-8b1e3f?style=flat-square&logo=doi&logoColor=white)](https://doi.org/10.1175/AIES-D-25-0049.1)
 
 Official implementation of "Probabilistic Spatial Interpolation of Sparse Data using Diffusion Models," accepted to AMS Journal: Artificial Intelligence for the Earth Systems (AIES). 
 
